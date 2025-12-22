@@ -4,4 +4,4 @@ Execution Accuracy will be used to evaluate the accuracy of the fine-tuned SLM, 
 
 ---
 
-50 questions of different diffculties will be used for evaluation. The result of the fine-tuned SLM will be compared against the results of a baseline SLM that has not been fine-tuned. The baseline SLM will also be evaluated using Execution Accuracy on the same set of questions.
+60 questions of different diffculties will be used for evaluation. The result of the fine-tuned SLM will be compared against the results of a baseline SLM that has not been fine-tuned. The baseline SLM will also be evaluated using Execution Accuracy on the same set of questions.
