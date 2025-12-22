@@ -46,7 +46,7 @@ SELECT T1.title, T2.name
 FROM album AS T1
 JOIN artist AS T2 ON T1.artist_id = T2.artist_id;
 ```
-2.Find the first and last names of all customers and the first and last name of their assigned support agent. 
+2. Find the first and last names of all customers and the first and last name of their assigned support agent. 
 ```sql
 SELECT T1.first_name, T1.last_name, T2.first_name AS agent_first_name, T2.last_name AS agent_last_name
 FROM customer AS T1
