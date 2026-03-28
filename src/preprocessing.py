@@ -1,12 +1,17 @@
 import argparse
 import json
+import sys
 from pathlib import Path
 
 
 def load_files(path) -> list:
     """Load a JSON file from the given path."""
-    with open(file=path, mode="r") as file:
-        return json.load(fp=file)
+    try:
+        with open(file=path, mode="r") as file:
+            return json.load(fp=file)
+    except FileNotFoundError:
+        print(f"File not found: {path}")
+        sys.exit(1)
 
 
 def create_schema(table) -> dict[str, str]:
@@ -88,19 +93,32 @@ def format_chat_template(schemas, data) -> list[dict]:
     return formatted_dataset
 
 
+def save_dataset(dataset: list[dict], path: Path) -> None:
+    with open(file=path, mode="w") as f:
+        for item in dataset:
+            f.write(json.dumps(obj=item) + "\n")
+        print(f"Dataset saved to {path}")
+
+
 if __name__ == "__main__":
     parser: argparse.ArgumentParser = argparse.ArgumentParser()
     parser.add_argument(
-        "--data_dir", type=str, default="/home/hojja/projects/NL2SQL/data/spider_data"
+        "--data_dir", type=str, default="~/projects/NL2SQL/data/spider_data"
+    )
+    parser.add_argument(
+        "--output_dir", type=str, default="~/projects/NL2SQL/data/formatted_data"
     )
     args: argparse.Namespace = parser.parse_args()
-    base_path: Path = Path(args.data_dir)
-    tables_path: Path = base_path / "tables.json"
-    train_path: Path = base_path / "train_spider.json"
-    test_tables_path: Path = base_path / "test_tables.json"
-    val_path: Path = base_path / "dev.json"
-    test_path: Path = base_path / "test.json"
-    train_others_path: Path = base_path / "train_others.json"
+    input_path: Path = Path(args.data_dir).expanduser()
+    output_path: Path = Path(args.output_dir).expanduser()
+    output_base: Path = output_path
+    output_base.mkdir(parents=True, exist_ok=True)
+    tables_path: Path = input_path / "tables.json"
+    train_path: Path = input_path / "train_spider.json"
+    test_tables_path: Path = input_path / "test_tables.json"
+    val_path: Path = input_path / "dev.json"
+    test_path: Path = input_path / "test.json"
+    train_others_path: Path = input_path / "train_others.json"
 
     table: list[dict] = load_files(path=tables_path)
     test_tables: list[dict] = load_files(path=test_tables_path)
@@ -121,4 +139,8 @@ if __name__ == "__main__":
     formatted_test_dataset: list[dict] = format_chat_template(
         schemas=test_schemas, data=test_data
     )
-    print(formatted_dataset[0])
+    save_dataset(dataset=formatted_dataset, path=output_path / "train_dataset.jsonl")
+    save_dataset(dataset=formatted_val_dataset, path=output_path / "val_dataset.jsonl")
+    save_dataset(
+        dataset=formatted_test_dataset, path=output_path / "test_dataset.jsonl"
+    )
