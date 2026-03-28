@@ -1,4 +1,6 @@
+import argparse
 import json
+from pathlib import Path
 
 
 def load_files(path) -> list:
@@ -9,7 +11,7 @@ def load_files(path) -> list:
 
 def create_schema(table) -> dict[str, str]:
     """Create a schema dictionary from the given table data."""
-    all_schemas: dict[str, str] = {}
+    schemas: dict[str, str] = {}
     for db in table:
         db_id: str = db["db_id"]
         columns: list = db["column_names_original"]
@@ -56,18 +58,18 @@ def create_schema(table) -> dict[str, str]:
 
         final_schema_text: str = " | ".join(schema_parts)
 
-        all_schemas[db_id] = final_schema_text
-    return all_schemas
+        schemas[db_id] = final_schema_text
+    return schemas
 
 
-def format_chat_template(all_schemas, train_data) -> list[dict]:
+def format_chat_template(schemas, data) -> list[dict]:
     """Formats the chat template for the training data."""
     formatted_dataset: list[dict] = []
-    for item in train_data:
+    for item in data:
         db_id: str = item["db_id"]
         question: str = item["question"]
         query: str = item["query"]
-        schema_text: str = all_schemas[db_id]
+        schema_text: str = schemas[db_id]
         formatted_dataset.append(
             {
                 "messages": [
@@ -87,31 +89,36 @@ def format_chat_template(all_schemas, train_data) -> list[dict]:
 
 
 if __name__ == "__main__":
-    table: list[dict] = load_files(
-        path="/home/hojja/projects/NL2SQL/data/spider_data/tables.json"
+    parser: argparse.ArgumentParser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--data_dir", type=str, default="/home/hojja/projects/NL2SQL/data/spider_data"
     )
-    test_tables: list[dict] = load_files(
-        path="/home/hojja/projects/NL2SQL/data/spider_data/test_tables.json"
-    )
-    train_data: list[dict] = load_files(
-        path="/home/hojja/projects/NL2SQL/data/spider_data/train_spider.json"
-    )
+    args: argparse.Namespace = parser.parse_args()
+    base_path: Path = Path(args.data_dir)
+    tables_path: Path = base_path / "tables.json"
+    train_path: Path = base_path / "train_spider.json"
+    test_tables_path: Path = base_path / "test_tables.json"
+    val_path: Path = base_path / "dev.json"
+    test_path: Path = base_path / "test.json"
+    train_others_path: Path = base_path / "train_others.json"
 
-    second_train_data: list[dict] = load_files(
-        path="/home/hojja/projects/NL2SQL/data/spider_data/train_others.json"
-    )
+    table: list[dict] = load_files(path=tables_path)
+    test_tables: list[dict] = load_files(path=test_tables_path)
+    train_data: list[dict] = load_files(path=train_path)
+
+    second_train_data: list[dict] = load_files(path=train_others_path)
     train_data += second_train_data
-    val_data: list[dict] = load_files(
-        path="/home/hojja/projects/NL2SQL/data/spider_data/dev.json"
+    val_data: list[dict] = load_files(path=val_path)
+    test_data: list[dict] = load_files(path=test_path)
+    all_schemas: dict[str, str] = create_schema(table=table)
+    test_schemas: dict[str, str] = create_schema(table=test_tables)
+    formatted_dataset: list[dict] = format_chat_template(
+        schemas=all_schemas, data=train_data
     )
-    test_data: list[dict] = load_files(
-        path="/home/hojja/projects/NL2SQL/data/spider_data/test.json"
+    formatted_val_dataset: list[dict] = format_chat_template(
+        schemas=all_schemas, data=val_data
     )
-    all_schemas: dict[str, str] = create_schema(table)
-    test_schemas: dict[str, str] = create_schema(test_tables)
-    formatted_dataset: list[dict] = format_chat_template(all_schemas, train_data)
-    formatted_val_dataset: list[dict] = format_chat_template(all_schemas, val_data)
-    formatted_test_dataset: list[dict] = format_chat_template(test_schemas, test_data)
-
-    print(len(formatted_dataset))
-    print(formatted_dataset[1000])
+    formatted_test_dataset: list[dict] = format_chat_template(
+        schemas=test_schemas, data=test_data
+    )
+    print(formatted_dataset[0])
