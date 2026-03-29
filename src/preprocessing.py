@@ -84,7 +84,7 @@ def create_schema(table) -> dict[str, str]:
     return schemas
 
 
-def format_chat_template(schemas, data) -> list[dict]:
+def format_chat_template(schemas, data, split_name) -> list[dict]:
     """Formats the chat template for the training data.
 
     Args:
@@ -111,10 +111,15 @@ def format_chat_template(schemas, data) -> list[dict]:
                         "role": "user",
                         "content": f"Here is a database schema:\n{schema_text}\n\nQuestion: {question}",
                     },
-                    {"role": "assistant", "content": query},
                 ]
             }
         )
+        if split_name == "test":
+            formatted_dataset[-1]["messages"] += [{"role": "assistant", "content": ""}]
+        else:
+            formatted_dataset[-1]["messages"] += [
+                {"role": "assistant", "content": query}
+            ]
     return formatted_dataset
 
 
@@ -198,13 +203,15 @@ if __name__ == "__main__":
 
     print("4. Formatting datasets")
     train_dataset: list[dict] = format_chat_template(
-        schemas=trun_schemas, data=data["train"]
+        schemas=trun_schemas, data=data["train"], split_name="train"
     )
+
     val_dataset: list[dict] = format_chat_template(
-        schemas=trun_schemas, data=data["val"]
+        schemas=trun_schemas, data=data["val"], split_name="val"
     )
+
     test_dataset: list[dict] = format_chat_template(
-        schemas=test_schemas, data=data["test"]
+        schemas=test_schemas, data=data["test"], split_name="test"
     )
 
     print("5. Saving formatted datasets")
