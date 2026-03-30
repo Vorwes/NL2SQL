@@ -2,10 +2,20 @@ import argparse
 import json
 import sys
 from pathlib import Path
+from typing import Dict, List, Tuple, Union
+
+from typing_extensions import Any
 
 
 def load_files(path) -> list:
-    """Load a JSON file from the given path."""
+    """Load a JSON file from the given path.
+
+    Args:
+        path: The path to the JSON file.
+
+    Returns:
+        The loaded JSON data as a list.
+    """
     try:
         with open(file=path, mode="r") as file:
             return json.load(fp=file)
@@ -15,7 +25,14 @@ def load_files(path) -> list:
 
 
 def create_schema(table) -> dict[str, str]:
-    """Create a schema dictionary from the given table data."""
+    """Create a schema dictionary from the given table data.
+
+    Args:
+        table: A list of dictionaries containing the table data.
+
+    Returns:
+        A dictionary mapping database IDs to schema text.
+    """
     schemas: dict[str, str] = {}
     for db in table:
         db_id: str = db["db_id"]
@@ -67,8 +84,16 @@ def create_schema(table) -> dict[str, str]:
     return schemas
 
 
-def format_chat_template(schemas, data) -> list[dict]:
-    """Formats the chat template for the training data."""
+def format_chat_template(schemas, data, split_name) -> list[dict]:
+    """Formats the chat template for the training data.
+
+    Args:
+        schemas: A dictionary mapping database IDs to schema text.
+        data: A list of dictionaries containing the training data.
+
+    Returns:
+        A list of dictionaries representing the formatted chat dataset.
+    """
     formatted_dataset: list[dict] = []
     for item in data:
         db_id: str = item["db_id"]
@@ -86,21 +111,26 @@ def format_chat_template(schemas, data) -> list[dict]:
                         "role": "user",
                         "content": f"Here is a database schema:\n{schema_text}\n\nQuestion: {question}",
                     },
-                    {"role": "assistant", "content": query},
                 ]
             }
         )
+        if split_name == "test":
+            formatted_dataset[-1]["messages"] += [{"role": "assistant", "content": ""}]
+        else:
+            formatted_dataset[-1]["messages"] += [
+                {"role": "assistant", "content": query}
+            ]
     return formatted_dataset
 
 
-def save_dataset(dataset: list[dict], path: Path) -> None:
-    with open(file=path, mode="w") as f:
-        for item in dataset:
-            f.write(json.dumps(obj=item) + "\n")
-        print(f"Dataset saved to {path}")
+def get_path() -> Tuple[Dict[str, Union[Path, List[Path]]], Path]:
+    """
+    Parses command line arguments for data directory and output directory paths.
 
+    Returns:
+        A tuple containing a dictionary of path mappings and the output path.
+    """
 
-if __name__ == "__main__":
     parser: argparse.ArgumentParser = argparse.ArgumentParser()
     parser.add_argument(
         "--data_dir", type=str, default="~/projects/NL2SQL/data/spider_data"
@@ -109,38 +139,82 @@ if __name__ == "__main__":
         "--output_dir", type=str, default="~/projects/NL2SQL/data/formatted_data"
     )
     args: argparse.Namespace = parser.parse_args()
+
     input_path: Path = Path(args.data_dir).expanduser()
     output_path: Path = Path(args.output_dir).expanduser()
-    output_base: Path = output_path
-    output_base.mkdir(parents=True, exist_ok=True)
-    tables_path: Path = input_path / "tables.json"
-    train_path: Path = input_path / "train_spider.json"
-    test_tables_path: Path = input_path / "test_tables.json"
-    val_path: Path = input_path / "dev.json"
-    test_path: Path = input_path / "test.json"
-    train_others_path: Path = input_path / "train_others.json"
+    output_path.mkdir(parents=True, exist_ok=True)
 
-    table: list[dict] = load_files(path=tables_path)
-    test_tables: list[dict] = load_files(path=test_tables_path)
-    train_data: list[dict] = load_files(path=train_path)
+    paths: dict[str, Union[Path, List[Path]]] = {
+        "tables": input_path / "tables.json",
+        "test_tables": input_path / "test_tables.json",
+        "train": [input_path / "train_spider.json", input_path / "train_others.json"],
+        "val": [input_path / "dev.json"],
+        "test": [input_path / "test.json"],
+    }
 
-    second_train_data: list[dict] = load_files(path=train_others_path)
-    train_data += second_train_data
-    val_data: list[dict] = load_files(path=val_path)
-    test_data: list[dict] = load_files(path=test_path)
-    all_schemas: dict[str, str] = create_schema(table=table)
-    test_schemas: dict[str, str] = create_schema(table=test_tables)
-    formatted_dataset: list[dict] = format_chat_template(
-        schemas=all_schemas, data=train_data
+    return paths, output_path
+
+
+def load_data(paths: Dict[str, Union[Path, List[Path]]]) -> dict:
+    """
+    Loads data from the given paths.
+
+    Args:
+        paths: A dictionary mapping keys to file paths or lists of file paths.
+
+    Returns:
+        A dictionary mapping keys to the loaded data.
+    """
+    data: dict[str, Any] = {}
+    for key, path in paths.items():
+        if isinstance(path, list):
+            data[key] = []
+            for p in path:
+                data[key].extend(load_files(path=p))
+        else:
+            data[key] = load_files(path)
+    return data
+
+
+def save_dataset(dataset: list[dict], path: Path) -> None:
+    """
+    Saves the given dataset to the specified path.
+
+    Args:
+        dataset: The dataset to save.
+        path: The path to save the dataset to.
+    """
+    with open(file=path, mode="a", encoding="utf-8") as f:
+        for item in dataset:
+            f.write(json.dumps(obj=item) + "\n")
+    print(f"Dataset saved to {path}")
+
+
+if __name__ == "__main__":
+    print("1. Initializing paths")
+    paths, output_path = get_path()
+
+    print("2. Loading data")
+    data: dict[str, Any] = load_data(paths)
+
+    print("3. Building schemas")
+    trun_schemas: dict[str, str] = create_schema(table=data["tables"])
+    test_schemas: dict[str, str] = create_schema(table=data["test_tables"])
+
+    print("4. Formatting datasets")
+    train_dataset: list[dict] = format_chat_template(
+        schemas=trun_schemas, data=data["train"], split_name="train"
     )
-    formatted_val_dataset: list[dict] = format_chat_template(
-        schemas=all_schemas, data=val_data
+
+    val_dataset: list[dict] = format_chat_template(
+        schemas=trun_schemas, data=data["val"], split_name="val"
     )
-    formatted_test_dataset: list[dict] = format_chat_template(
-        schemas=test_schemas, data=test_data
+
+    test_dataset: list[dict] = format_chat_template(
+        schemas=test_schemas, data=data["test"], split_name="test"
     )
-    save_dataset(dataset=formatted_dataset, path=output_path / "train_dataset.jsonl")
-    save_dataset(dataset=formatted_val_dataset, path=output_path / "val_dataset.jsonl")
-    save_dataset(
-        dataset=formatted_test_dataset, path=output_path / "test_dataset.jsonl"
-    )
+
+    print("5. Saving formatted datasets")
+    save_dataset(dataset=train_dataset, path=output_path / "train.jsonl")
+    save_dataset(dataset=val_dataset, path=output_path / "val.jsonl")
+    save_dataset(dataset=test_dataset, path=output_path / "test.jsonl")
