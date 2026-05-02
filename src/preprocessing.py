@@ -2,7 +2,7 @@ import argparse
 import json
 import sys
 from pathlib import Path
-from typing import Dict, List, Tuple, Union
+from typing import Dict, List, Literal, Tuple, Union, overload
 
 from typing_extensions import Any
 
@@ -24,16 +24,33 @@ def load_files(path) -> list:
         sys.exit(1)
 
 
-def create_schema(table) -> dict[str, str]:
-    """Create a schema dictionary from the given table data.
+@overload
+def create_schema(
+    table: list, return_as_chunks: Literal[False] = False
+) -> dict[str, str]: ...
+
+
+@overload
+def create_schema(table: list, return_as_chunks: Literal[True]) -> list[dict]: ...
+
+
+def create_schema(
+    table: list, return_as_chunks: bool = False
+) -> Union[Dict[str, str], List[dict]]:
+    """
+    Create a schema dictionary or vector chunks from the given table data.
 
     Args:
         table: A list of dictionaries containing the table data.
+        return_as_chunks: If True, returns a list of chunks for Vector DB.
+                          If False, returns a dict mapping db_id to schema text.
 
     Returns:
-        A dictionary mapping database IDs to schema text.
+        A dictionary of schemas OR a list of chunk dictionaries.
     """
     schemas: dict[str, str] = {}
+    chunks: list[dict] = []
+
     for db in table:
         db_id: str = db["db_id"]
         columns: list = db["column_names_original"]
@@ -41,8 +58,10 @@ def create_schema(table) -> dict[str, str]:
         pks: list = db["primary_keys"]
         fks: list = db["foreign_keys"]
         col_types: list = db["column_types"]
+
         fk_mapping: dict = {}
         db_schema: dict = {}
+
         for fk in fks:
             fk_idx: int = fk[0]
             target_idx: int = fk[1]
@@ -55,6 +74,7 @@ def create_schema(table) -> dict[str, str]:
             current_type: str = col_types[col_idx]
             col_name: str = f"{col[1]} [ {current_type.upper()} ]"
             table_index: int = col[0]
+
             if col_idx in pks:
                 col_name = f"{col_name} [PK]"
             if col_idx in fk_mapping:
@@ -70,18 +90,24 @@ def create_schema(table) -> dict[str, str]:
 
             db_schema[table_name].append(col_name)
 
-        schema_parts: list[str] = []
-        for table_name, table_cols in db_schema.items():
-            columns_string: str = ", ".join(table_cols)
+        if return_as_chunks:
+            for table_name, table_cols in db_schema.items():
+                chunk_cols_str: str = ", ".join(table_cols)
+                chunk_text: str = f"Table: {table_name} | Columns: {chunk_cols_str}"
+                chunks.append(
+                    {"db_id": db_id, "table_name": table_name, "text": chunk_text}
+                )
+        else:
+            schema_parts: list[str] = []
+            for table_name, table_cols in db_schema.items():
+                schema_cols_str: str = ", ".join(table_cols)
+                table_string: str = f"{table_name} : {schema_cols_str}"
+                schema_parts.append(table_string)
 
-            table_string: str = f"{table_name} : {columns_string}"
+            final_schema_text: str = " | ".join(schema_parts)
+            schemas[db_id] = final_schema_text
 
-            schema_parts.append(table_string)
-
-        final_schema_text: str = " | ".join(schema_parts)
-
-        schemas[db_id] = final_schema_text
-    return schemas
+    return chunks if return_as_chunks else schemas
 
 
 def format_chat_template(schemas, data, split_name) -> list[dict]:

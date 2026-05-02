@@ -10,6 +10,7 @@ wheels/
 .venv
 
 .env
-test_database
 spider_data/
 formatted_data/
+evaluation/
+test_data/
