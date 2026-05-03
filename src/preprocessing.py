@@ -228,7 +228,7 @@ def save_dataset(dataset: list[dict], path: Path) -> None:
         dataset: The dataset to save.
         path: The path to save the dataset to.
     """
-    with open(file=path, mode="a", encoding="utf-8") as f:
+    with open(file=path, mode="w", encoding="utf-8") as f:
         for item in dataset:
             f.write(json.dumps(obj=item) + "\n")
     print(f"Dataset saved to {path}")

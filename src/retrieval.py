@@ -5,7 +5,13 @@ import chromadb
 from chromadb.api.types import EmbeddingFunction
 from chromadb.utils import embedding_functions
 
-from .preprocessing import format_chat_template, get_path, load_data, save_dataset
+from .preprocessing import (
+    create_schema,
+    format_chat_template,
+    get_path,
+    load_data,
+    save_dataset,
+)
 
 
 def get_chroma_collection(
@@ -32,12 +38,6 @@ def get_chroma_collection(
 def retrieve_relevant_schema(db_id: str, question: str, top_k: int = 3) -> str:
     """
     Searches ChromaDB for the most relevant tables to the question for a specific database.
-    Args:
-        db_id (str): The ID of the database to search in.
-        question (str): The question to search for.
-        top_k (int, optional): The number of results to return. Defaults to 3.
-    Returns:
-        str: A formatted string of the retrieved schema chunks.
     """
     results: chromadb.QueryResult = collection.query(
         query_texts=[question], n_results=top_k, where={"db_id": db_id}
@@ -45,21 +45,15 @@ def retrieve_relevant_schema(db_id: str, question: str, top_k: int = 3) -> str:
 
     if results["documents"] and results["documents"][0]:
         retrieved_chunks: list[str] = results["documents"][0]
-        return " | ".join(retrieved_chunks)
+        return "\n\n".join(retrieved_chunks)
     else:
-        return "No schema found."
+        return "-- No schema found."
 
 
 def build_rag_schemas(data_split: list, split_name: str, top_k: int = 3) -> dict:
     """
     Iterates over questions in the split, retrieves the relevant schema,
     and returns a dictionary compatible with the format_chat_template function.
-    Args:
-        data_split (list): The split of questions to process.
-        split_name (str): The name of the split (e.g., "train", "test").
-        top_k (int, optional): The number of results to return. Defaults to 3.
-    Returns:
-        dict: A dictionary of retrieved schemas, keyed by unique question identifiers.
     """
     print(f"Retrieving schemas for {split_name} split ({len(data_split)} questions)...")
     rag_schemas: dict[str, str] = {}
@@ -85,6 +79,7 @@ def build_rag_schemas(data_split: list, split_name: str, top_k: int = 3) -> dict
 if __name__ == "__main__":
     print("Initializing Vector Store...")
     collection: chromadb.Collection = get_chroma_collection()
+
     print("1. Loading Data...")
     paths, output_path = get_path()
 
@@ -95,12 +90,11 @@ if __name__ == "__main__":
 
     TOP_K_TABLES = 5
 
-    train_schemas: dict[str, str] = build_rag_schemas(
-        data_split=data["train"], split_name="train", top_k=TOP_K_TABLES
-    )
-    print("  Formatting train dataset...")
+    print("  Formatting train dataset (Using FULL Schemas to avoid hallucination)...")
+    full_train_schemas: dict[str, str] = create_schema(table=data["tables"])
+
     train_dataset: list[dict] = format_chat_template(
-        schemas=train_schemas, data=data["train"], split_name="train"
+        schemas=full_train_schemas, data=data["train"], split_name="train"
     )
 
     val_schemas: dict[str, str] = build_rag_schemas(
