@@ -15,3 +15,4 @@ formatted_data/
 evaluation/
 test_data/
 chroma_db_storage/
+formatted_data_rag/

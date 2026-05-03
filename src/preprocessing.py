@@ -38,7 +38,7 @@ def create_schema(
     table: list, return_as_chunks: bool = False
 ) -> Union[Dict[str, str], List[dict]]:
     """
-    Create a schema dictionary or vector chunks from the given table data.
+    Create a standard DDL (SQL) schema dictionary or vector chunks from the given table data.
 
     Args:
         table: A list of dictionaries containing the table data.
@@ -46,7 +46,7 @@ def create_schema(
                           If False, returns a dict mapping db_id to schema text.
 
     Returns:
-        A dictionary of schemas OR a list of chunk dictionaries.
+        A dictionary of DDL schemas OR a list of chunk dictionaries.
     """
     schemas: dict[str, str] = {}
     chunks: list[dict] = []
@@ -59,52 +59,69 @@ def create_schema(
         fks: list = db["foreign_keys"]
         col_types: list = db["column_types"]
 
-        fk_mapping: dict = {}
-        db_schema: dict = {}
+        db_schema = {t_name: {"cols": [], "fks": []} for t_name in tables}
+
+        col_idx_to_info = {}
+        for col_idx, col in enumerate(columns):
+            table_idx = col[0]
+            if table_idx == -1:
+                continue
+            col_idx_to_info[col_idx] = {"table": tables[table_idx], "name": col[1]}
 
         for fk in fks:
-            fk_idx: int = fk[0]
-            target_idx: int = fk[1]
-            target_col_name: str = columns[target_idx][1]
-            target_table_idx: int = columns[target_idx][0]
-            target_table_name: str = tables[target_table_idx]
-            fk_mapping[fk_idx] = f"[FK to {target_table_name}.{target_col_name}]"
+            fk_idx, target_idx = fk[0], fk[1]
+            if fk_idx in col_idx_to_info and target_idx in col_idx_to_info:
+                src_table = col_idx_to_info[fk_idx]["table"]
+                src_col = col_idx_to_info[fk_idx]["name"]
+                target_table = col_idx_to_info[target_idx]["table"]
+                target_col = col_idx_to_info[target_idx]["name"]
+
+                fk_str = (
+                    f"FOREIGN KEY ({src_col}) REFERENCES {target_table}({target_col})"
+                )
+                db_schema[src_table]["fks"].append(fk_str)
 
         for col_idx, col in enumerate(columns):
-            current_type: str = col_types[col_idx]
-            col_name: str = f"{col[1]} [ {current_type.upper()} ]"
-            table_index: int = col[0]
-
-            if col_idx in pks:
-                col_name = f"{col_name} [PK]"
-            if col_idx in fk_mapping:
-                col_name += f" {fk_mapping[col_idx]}"
-
-            if table_index == -1:
+            table_idx = col[0]
+            if table_idx == -1:
                 continue
 
-            table_name: str = tables[table_index]
+            table_name = tables[table_idx]
+            col_name = col[1]
 
-            if table_name not in db_schema:
-                db_schema[table_name] = []
+            c_type = col_types[col_idx].upper()
+            if c_type == "TEXT":
+                c_type = "VARCHAR"
+            elif c_type == "NUMBER":
+                c_type = "INTEGER"
 
-            db_schema[table_name].append(col_name)
+            col_def = f"{col_name} {c_type}"
+
+            if col_idx in pks:
+                col_def += " PRIMARY KEY"
+
+            db_schema[table_name]["cols"].append(col_def)
 
         if return_as_chunks:
-            for table_name, table_cols in db_schema.items():
-                chunk_cols_str: str = ", ".join(table_cols)
-                chunk_text: str = f"Table: {table_name} | Columns: {chunk_cols_str}"
+            for table_name, table_data in db_schema.items():
+                all_elements = table_data["cols"] + table_data["fks"]
+                elements_str = ",\n  ".join(all_elements)
+
+                chunk_text = f"CREATE TABLE {table_name} (\n  {elements_str}\n);"
+
                 chunks.append(
                     {"db_id": db_id, "table_name": table_name, "text": chunk_text}
                 )
         else:
             schema_parts: list[str] = []
-            for table_name, table_cols in db_schema.items():
-                schema_cols_str: str = ", ".join(table_cols)
-                table_string: str = f"{table_name} : {schema_cols_str}"
+            for table_name, table_data in db_schema.items():
+                all_elements = table_data["cols"] + table_data["fks"]
+                elements_str = ",\n  ".join(all_elements)
+
+                table_string = f"CREATE TABLE {table_name} (\n  {elements_str}\n);"
                 schema_parts.append(table_string)
 
-            final_schema_text: str = " | ".join(schema_parts)
+            final_schema_text: str = "\n\n".join(schema_parts)
             schemas[db_id] = final_schema_text
 
     return chunks if return_as_chunks else schemas
@@ -161,6 +178,7 @@ def get_path() -> Tuple[Dict[str, Union[Path, List[Path]]], Path]:
     parser.add_argument(
         "--data_dir", type=str, default="~/projects/NL2SQL/data/spider_data"
     )
+
     parser.add_argument(
         "--output_dir", type=str, default="~/projects/NL2SQL/data/formatted_data"
     )
