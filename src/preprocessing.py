@@ -175,13 +175,9 @@ def get_path() -> Tuple[Dict[str, Union[Path, List[Path]]], Path]:
     """
 
     parser: argparse.ArgumentParser = argparse.ArgumentParser()
-    parser.add_argument(
-        "--data_dir", type=str, default="~/projects/NL2SQL/data/spider_data"
-    )
+    parser.add_argument("--data_dir", type=str, default="../data/spider_data")
 
-    parser.add_argument(
-        "--output_dir", type=str, default="~/projects/NL2SQL/data/formatted_data"
-    )
+    parser.add_argument("--output_dir", type=str, default="../data/formatted_data")
     args: argparse.Namespace = parser.parse_args()
 
     input_path: Path = Path(args.data_dir).expanduser()
