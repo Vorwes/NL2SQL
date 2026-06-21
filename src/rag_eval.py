@@ -1,11 +1,3 @@
-"""eval_rag.py — Evaluate Top-5 table retrieval accuracy of the RAG pipeline.
-
-Measures how well the retriever surfaces the tables the gold SQL needs,
-independently of the SLM. Run as a module so relative imports resolve:
-
-    python -m src.eval_rag --data_dir ../data/spider_data --top_k 5
-"""
-
 from __future__ import annotations
 
 import argparse
