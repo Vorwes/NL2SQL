@@ -29,6 +29,9 @@ class LLM:
         )
 
     def generate(self, schema: str, question: str, max_tokens: int = 256):
+        """
+        Genrates SQL queries based on the provided database schema and user question. It streams the generated content token by token.
+        """
         if self.llm is None:
             raise ValueError("Model is not loaded. Call load() before generating.")
 
