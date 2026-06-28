@@ -13,6 +13,17 @@ class LLM:
         self.chat_format = chat_format
         self.context_window = context_window
         self.llm = None
+        self.DDL = {
+            "drop",
+            "delete",
+            "insert",
+            "update",
+            "alter",
+            "create",
+            "truncate",
+            "grant",
+            "revoke",
+        }
 
     def load(self):
         """
@@ -52,8 +63,14 @@ class LLM:
             stream=True,
         )
 
+        output = ""
+
         for chunk in response_stream:
             delta = chunk["choices"][0]["delta"]
             content = delta.get("content")
             if content:
+                output += content.lower()
+                if any(ddl_word in output for ddl_word in self.DDL):
+                    yield " Sorry, I cannot generate any DDL instructions."
+                    return
                 yield content
