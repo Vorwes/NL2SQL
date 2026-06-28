@@ -27,3 +27,30 @@ class LLM:
             n_ctx=self.context_window,
             verbose=False,
         )
+
+    def generate(self, schema: str, question: str, max_tokens: int = 256):
+        if self.llm is None:
+            raise ValueError("Model is not loaded. Call load() before generating.")
+
+        messages = [
+            {
+                "role": "system",
+                "content": "You are a helpful database assistant. Your task is to generate correct SQL queries based on the provided database schema and user question.",
+            },
+            {
+                "role": "user",
+                "content": f"Here is a database schema:\n{schema}\n\nQuestion: {question}",
+            },
+        ]
+
+        response_stream = self.llm.create_chat_completion(
+            messages=messages,
+            max_tokens=max_tokens,
+            stream=True,
+        )
+
+        for chunk in response_stream:
+            delta = chunk["choices"][0]["delta"]
+            content = delta.get("content")
+            if content:
+                yield content
