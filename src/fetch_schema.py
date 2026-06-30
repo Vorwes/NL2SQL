@@ -45,6 +45,3 @@ def get_schema(db_uri: str):
 
     except Exception as e:
         print(f"Database extraction failed: {e}")
-
-
-print(get_schema(db_uri))
