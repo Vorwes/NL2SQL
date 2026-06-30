@@ -1,7 +1,5 @@
 import psycopg
 
-db_uri = "postgresql://postgres:postgres123@localhost:5432/chinook"
-
 
 def get_schema(db_uri: str):
     dynamic_ddl_query = """
