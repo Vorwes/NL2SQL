@@ -20,3 +20,4 @@ models/
 test_database/
 .zed/
 resaults/
+chroma_db_storage/
