@@ -5,28 +5,22 @@ description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
-    "accelerate>=1.12.0",
-    "bitsandbytes>=0.49.0",
-    "chainlit>=2.11.1",
-    "chromadb>=1.5.8",
-    "fastapi>=0.139.0",
-    "httpx>=0.28.1",
-    "llama-cpp-python>=0.3.31",
-    "nltk>=3.9.4",
-    "pandas>=2.3.3",
-    "psycopg[binary,pool]>=3.3.4",
-    "sentence-transformers>=5.4.1",
-    "tqdm>=4.67.1",
-    "transformers>=4.57.3",
-    "uvicorn>=0.46.0",
+  "chainlit>=2.11.1",
+  "chromadb>=1.5.8",
+  "fastapi>=0.139.0",
+  "httpx>=0.28.1",
+  "llama-cpp-python>=0.3.31",
+  "pandas>=2.3.3",
+  "psycopg[binary,pool]>=3.3.4",
+  "sentence-transformers>=5.6.0",
+  "torch>=2.12.1",
+  "uvicorn>=0.46.0",
 ]
 
 [[tool.uv.index]]
-name = "pytorch"
-url = "https://download.pytorch.org/whl/cu121"
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
 explicit = true
 
 [tool.uv.sources]
-torch = [{ index = "pytorch" }]
-torchvision = [{ index = "pytorch" }]
-torchaudio = [{ index = "pytorch" }]
+torch = [{ index = "pytorch-cpu" }]
