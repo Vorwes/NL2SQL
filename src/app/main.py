@@ -4,10 +4,10 @@ from fastapi import FastAPI, HTTPException
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
-from .fetch_schema import get_schema
-from .inference.model_inference import LLM
-from .inference.vector_db import retrieve_tables, store_raw_ddl_in_vector_db
-from .retrieval import get_chroma_collection
+from ..fetch_schema import get_schema
+from ..inference.model_inference import LLM
+from ..inference.vector_db import retrieve_tables, store_raw_ddl_in_vector_db
+from ..retrieval import get_chroma_collection
 
 app_state = {"llm": None, "collection": None, "db_uri": None, "db_name": None}
 
