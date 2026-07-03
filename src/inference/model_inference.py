@@ -76,4 +76,5 @@ class LLM:
                         return
                     yield content
         finally:
-            yield ";"
+            if ";" not in output:
+                yield ";"
