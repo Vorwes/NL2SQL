@@ -65,12 +65,15 @@ class LLM:
 
         output = ""
 
-        for chunk in response_stream:
-            delta = chunk["choices"][0]["delta"]
-            content = delta.get("content")
-            if content:
-                output += content.lower()
-                if any(ddl_word in output for ddl_word in self.DDL):
-                    yield " Sorry, I cannot generate any DDL instructions."
-                    return
-                yield content
+        try:
+            for chunk in response_stream:
+                delta = chunk["choices"][0]["delta"]
+                content = delta.get("content")
+                if content:
+                    output += content.lower()
+                    if any(ddl_word in output for ddl_word in self.DDL):
+                        yield " Sorry, I cannot generate any DDL instructions."
+                        return
+                    yield content
+        finally:
+            yield ";"
