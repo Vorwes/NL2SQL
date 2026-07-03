@@ -1,11 +1,9 @@
 import chromadb
 from chromadb.utils import embedding_functions
 
-from .fetch_schema import get_schema
-
 
 def store_raw_ddl_in_vector_db(
-    ddl_commands: list[str], db_name: str, storage_path: str = "./chroma_db_storage"
+    ddl_commands: list[str], db_name: str, storage_path: str = "../chroma_db_storage"
 ):
     documents = [ddl.strip() for ddl in ddl_commands if ddl.strip()]
     client = chromadb.PersistentClient(path=storage_path)
