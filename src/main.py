@@ -1,6 +1,5 @@
 from contextlib import asynccontextmanager
 
-import chromadb
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
@@ -10,7 +9,7 @@ from .inference.model_inference import LLM
 from .inference.vector_db import retrieve_tables, store_raw_ddl_in_vector_db
 from .retrieval import get_chroma_collection
 
-app_state = {"llm": None, "collection": None, "current_db_uri": None}
+app_state = {"llm": None, "collection": None, "db_uri": None}
 
 MODEL_PATH = "./models/qwen-1.5b_nl2sql-q8_0.gguf"
 
@@ -28,6 +27,7 @@ async def lifespan(app: FastAPI):
     print("API is ready to receive requests!")
     yield
 
+    app_state.clear()
     print("Shutting down API...")
 
 
@@ -44,13 +44,13 @@ class QueryRequest(BaseModel):
 
 
 @app.post("/connect")
-async def connect_db(request: ConnectRequest):
+async def connect_db(request: ConnectRequest) -> dict:
     """
     Called ONCE to set up the database. Extracts the schema, saves it
     to the vector database, and saves the connection to the app_state.
     """
     try:
-        if request.db_uri == app_state.get("current_db_uri"):
+        if request.db_uri == app_state.get("db_uri"):
             return {
                 "message": f"Already connected to {request.db_name}. Ready for queries."
             }
@@ -63,7 +63,7 @@ async def connect_db(request: ConnectRequest):
 
         print("Connecting to ChromaDB collection...")
         app_state["collection"] = get_chroma_collection(collection_name=request.db_name)
-        app_state["current_db_uri"] = request.db_uri
+        app_state["db_uri"] = request.db_uri
 
         return {
             "message": f"Successfully processed schema and connected to {request.db_name}."
@@ -74,7 +74,7 @@ async def connect_db(request: ConnectRequest):
 
 
 @app.post("/generate_sql")
-async def generate_sql(request: QueryRequest):
+async def generate_sql(request: QueryRequest) -> StreamingResponse:
     """
     Accepts ONLY a natural language query. Relies entirely on the
     app_state memory to access the connected database and stream SQL.
