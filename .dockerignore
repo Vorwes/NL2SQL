@@ -1,0 +1,15 @@
+.venv
+__pycache__/
+*.pyc
+.git
+.gitignore
+.env*
+.pytest_cache/
+*.egg-info
+
+test_database/
+test_data/
+results/
+chroma_db_storage/
+data/
+docs/

@@ -1,0 +1,20 @@
+services:
+    nl2sql-backend:
+        build:
+            context: .
+            dockerfile: Dockerfile
+            target: backend
+        ports:
+            - "8000:8000"
+
+    nl2sql-frontend:
+        build:
+            context: .
+            dockerfile: Dockerfile
+            target: frontend
+        ports:
+            - "8001:8001"
+        depends_on:
+            - nl2sql-backend
+        environment:
+            - API_URL=http://nl2sql-backend:8000

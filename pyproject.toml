@@ -4,11 +4,12 @@ version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.12"
-dependencies = [
-  "chainlit>=2.11.1",
+dependencies = []
+
+[dependency-groups]
+backend = [
   "chromadb>=1.5.8",
   "fastapi>=0.139.0",
-  "httpx>=0.28.1",
   "llama-cpp-python>=0.3.31",
   "pandas>=2.3.3",
   "psycopg[binary,pool]>=3.3.4",
@@ -16,6 +17,8 @@ dependencies = [
   "torch>=2.12.1",
   "uvicorn>=0.46.0",
 ]
+
+frontend = ["chainlit>=2.11.1", "httpx>=0.28.1"]
 
 [[tool.uv.index]]
 name = "pytorch-cpu"
