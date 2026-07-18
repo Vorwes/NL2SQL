@@ -18,5 +18,7 @@ chroma_db_storage/
 formatted_data_rag/
 models/
 test_database/
+test_data/
+docs/
 .zed/
 results/
